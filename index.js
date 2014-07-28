@@ -77,9 +77,7 @@ var attach = function($) {
                 'Authorization': "Basic " + options.credentials
               },
               success: function(resp) {
-                if (options.successCb !== null) {
-                  return options.successCb(resp);
-                }
+                options.onUploadComplete(resp);
               }
             });
           };
