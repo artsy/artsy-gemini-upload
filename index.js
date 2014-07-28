@@ -15,9 +15,8 @@ var attach = function($) {
         },
         success: (function(_this) {
           return function(resp) {
-            return _this.attachFileUploadUI(resp, _.extend(options, {
-              credentials: encodedCredentials
-            }));
+            options.credentials = encodedCredentials
+            return _this.attachFileUploadUI(resp, options);
           };
         })(this)
       });
