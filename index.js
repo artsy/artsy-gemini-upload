@@ -77,7 +77,9 @@ var attach = function($) {
                 'Authorization': "Basic " + options.credentials
               },
               success: function(resp) {
-                _this.options.onUploadComplete()
+                if (options.successCb !== null) {
+                  return options.successCb(resp);
+                }
               }
             });
           };
@@ -91,9 +93,9 @@ var attach = function($) {
             return data.submit();
           };
         })(this),
-        fail: this.options.onFail,
-        progress: this.options.onProgressUpdate,
-        stop: this.options.onStop
+        fail: options.onFail,
+        progress: options.onProgressUpdate,
+        stop: options.onStop
       });
     }
   });
