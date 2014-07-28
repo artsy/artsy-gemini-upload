@@ -1,0 +1,6 @@
+{
+  "name": "artsy-gemini-upload",
+  "version": "0.0.2",
+  "description": "Wrapper for gemini uploads",
+  "main": "index.js"
+}
