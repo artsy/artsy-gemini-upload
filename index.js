@@ -65,7 +65,7 @@ var attach = function($) {
             return $.ajax({
               type: 'POST',
               dataType: 'json',
-              url: "" + options.geminiApp + "/entries.json",
+              url: options.geminiApp + "/entries.json",
               data: {
                 entry: {
                   source_key: key,
@@ -78,9 +78,7 @@ var attach = function($) {
                 'Authorization': "Basic " + options.credentials
               },
               success: function(resp) {
-                if (options.successCb !== null) {
-                  return options.successCb(resp);
-                }
+                _this.options.onUploadComplete()
               }
             });
           };
