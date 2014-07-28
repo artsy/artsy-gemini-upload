@@ -1,4 +1,4 @@
-var attach = funciton($) {
+var attach = function($) {
   $.fn.extend({
     geminiUpload: function(options) {
       var encodedCredentials;
@@ -6,7 +6,7 @@ var attach = funciton($) {
       return $.ajax({
         type: 'GET',
         dataType: 'json',
-        url: "" + options.geminiApp + "/uploads/new.json",
+        url: options.geminiApp + "/uploads/new.json",
         data: {
           acl: options.acl
         },
@@ -15,7 +15,9 @@ var attach = funciton($) {
         },
         success: (function(_this) {
           return function(resp) {
-            return _this.renderForm(resp, options);
+            return _this.attachFileUploadUI(resp, _.extend(options, {
+              credentials: encodedCredentials
+            }));
           };
         })(this)
       });
@@ -23,63 +25,64 @@ var attach = funciton($) {
     encode: function(key, secret) {
       return btoa(unescape(encodeURIComponent([key, secret].join(':'))));
     },
-    renderForm: function(data, options) {
-      var bucket, key;
-      key = "" + data.policy_document.conditions[1][2] + "/${filename}";
+    seedForm: function(data, options) {
+      var $form, acl, base64Policy, bucket, key, s3Key, signature, successAction, uploadBucket;
       bucket = data.policy_document.conditions[0].bucket;
-      this.$('.spiu-form').html(s3UploadForm({
-        acl: data.policy_document.conditions[2].acl,
-        successAction: data.policy_document.conditions[3].success_action_status,
-        base64Policy: data.policy_encoded,
-        signature: data.signature,
-        key: key,
-        s3Key: options.geminiS3AccessKey,
-        uploadBucket: bucket
-      }));
-      return this.attachFileUploadUI(bucket, key, options);
+      key = data.policy_document.conditions[1][2] + "/${filename}";
+      acl = data.policy_document.conditions[2].acl;
+      successAction = data.policy_document.conditions[3].success_action_status;
+      base64Policy = data.policy_encoded;
+      signature = data.signature;
+      s3Key = options.s3Key;
+      uploadBucket = bucket;
+      $form = this.find('form');
+      $form.find('input[name=key]').val(key);
+      $form.find('input[name=AWSAccessKeyId]').val(s3Key);
+      $form.find('input[name=acl]').val(acl);
+      $form.find('input[name=success_action_status]').val(successAction);
+      $form.find('input[name=policy]').val(base64Policy);
+      $form.find('input[name=signature]').val(signature);
+      return $form.get(0).setAttribute('action', "https://" + uploadBucket + ".s3.amazonaws.com");
     },
-    makeGeminiRequest: (function(_this) {
-      return function(data) {
-        var fileName, key, metadata;
-        fileName = data.files[0].name;
-        key = data.key.replace('${filename}', fileName);
-        metadata = {
-          _type: 'ProfileIcon',
-          id: _this.profile.get('id')
-        };
-        return $.ajax({
-          type: 'POST',
-          dataType: 'json',
-          url: "" + options.geminiApp + "/entries.json",
-          data: {
-            entry: {
-              source_key: key,
-              source_bucket: data.bucket,
-              template_key: 'profile-icon',
-              metadata: metadata
-            }
-          },
-          headers: {
-            'Authorization': "Basic " + _this.encodedCredentials
-          },
-          success: function(resp) {
-            return _this.onUploadComplete();
-          }
-        });
+    attachFileUploadUI: function(data, options) {
+      var $form, bucket, key, metadata;
+      $form = this.find('form');
+      bucket = data.policy_document.conditions[0].bucket;
+      key = data.policy_document.conditions[1][2] + "/${filename}";
+      this.seedForm(data, options);
+      metadata = {
+        _type: options._type,
+        id: options.id
       };
-    })(this),
-    attachFileUploadUI: function(bucket, key, options) {
-      var $form;
-      $form = this.$('form');
       return $form.fileupload({
         type: 'POST',
         dataType: 'xml',
         done: (function(_this) {
           return function(e, data) {
-            return _this.makeGeminiRequest(_.extend(data, {
-              key: key,
-              bucket: bucket
-            }));
+            var fileName;
+            fileName = data.files[0].name;
+            key = key.replace('${filename}', fileName);
+            return $.ajax({
+              type: 'POST',
+              dataType: 'json',
+              url: "" + options.geminiApp + "/entries.json",
+              data: {
+                entry: {
+                  source_key: key,
+                  source_bucket: bucket,
+                  template_key: options.templateKey,
+                  metadata: metadata
+                }
+              },
+              headers: {
+                'Authorization': "Basic " + options.credentials
+              },
+              success: function(resp) {
+                if (options.successCb !== null) {
+                  return options.successCb(resp);
+                }
+              }
+            });
           };
         })(this),
         add: (function(_this) {
@@ -91,14 +94,13 @@ var attach = funciton($) {
             return data.submit();
           };
         })(this),
-        fail: options.onFail,
-        progress: options.onProgressUpdate,
-        stop: options.onStop
+        fail: this.options.onFail,
+        progress: this.options.onProgressUpdate,
+        stop: this.options.onStop
       });
     }
   });
 };
-
 
 // Export for CommonJS & window global
 if (typeof module != 'undefined') {
